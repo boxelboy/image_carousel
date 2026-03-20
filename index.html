@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>ESMO 2024</title>
+    <style>
+        @font-face {
+            font-family: "HelveticalNeue";
+            src: url('dashboard/assets/fonts/HelveticalNeue.ttc') format('truetype');
+        }
+
+        body {
+            text-align: center;
+            overflow: hidden;
+        }
+
+        h1 {
+            color: green;
+        }
+
+        img {
+            position: absolute;
+            height: 100vh;
+            width: 100vw;
+            z-index: 0;
+            opacity: 0;
+            transition: opacity 1s;
+        }
+
+        .code {
+            font-family: 'HelveticaNeue', "Open Sans", sans-serif;
+            position: absolute;
+            bottom: 1vh;
+            right: 1vw;
+            font-size: 24px;
+            color: black;
+            opacity: 1;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+<div id="images"></div>
+<div class="code">EMEA-ONC-24-00089 | September 2024</div>
+</body>
+<script>
+
+    let zoom = 100;
+    let xPos = '';
+    let yPos = '';
+    let style = '';
+    let images = [];
+    const oldZIndex = 1;
+    const newZIndex = 2;
+    let imageFadeTimout;
+
+    const maxLoop = 2;
+
+    const startImageTransition = () => {
+        
+        let imgStr = '';
+        let swapCount = 0;
+        let imageIndex = 0;
+        
+        style = 'opacity:0;';
+        fetch('/zoom')
+            .then(res => res.json())
+            .then(data => {
+                zoom = data[0].zoom;
+                yPos = data[1].pos.split(' ')[0];
+                xPos = data[1].pos.split(' ')[1];
+                style += 'height:' + zoom + 'vh;width:' + zoom + 'vw;'
+                style += xPos + ':0;' + yPos + ':0;'
+            }).then(() => {
+
+            fetch('/json')
+                .then(res => res.json())
+                .then(data => {
+                    let z = 1;
+                    for (const key in data) {
+                        let extraStyle = style + 'z-index:' + z + ';';z
+                        imgStr += `<img data-timeout="${data[key].duration * 1000}" alt="*" src="/${data[key].img}" class="carousel" style="${extraStyle}" />`;
+                        z = 0;
+                    }
+                    document.getElementById('images').innerHTML = imgStr;
+                }).then(() => {
+
+                let images = document.getElementsByClassName("carousel");
+                let codes = document.getElementsByClassName('code');
+
+                images[0].style.opacity = 1;
+
+                const fadeImage = async(duration, imageIndex) => {
+
+                    let prevImage = images[imageIndex]
+
+                    imageFadeTimout = setTimeout(async () => {
+
+                        if ((imageIndex + 1) === images.length) {
+                            
+                            imageIndex = 0;
+
+                            swapCount += 1;
+
+                            if (swapCount >= maxLoop) {
+                                swapCount = 0;
+                                clearTimeout(imageFadeTimout);
+                                startImageTransition();
+                            }
+
+                        } else {
+                            imageIndex++;
+                        }
+
+                        let nextImage = images[imageIndex];
+
+                        //zIndex++;
+
+                        //if (zIndex > 50) zIndex = 1;
+
+                        nextImage.style.zIndex = newZIndex;
+                        nextImage.style.opacity = 1;
+                        prevImage.style.opacity = 0;
+                        prevImage.style.zIndex = oldZIndex;
+
+                        await fadeImage(nextImage.getAttribute("data-timeout"), imageIndex);
+
+                    }, duration);
+
+                }
+
+                fadeImage(images[0].getAttribute("data-timeout"), 0);
+
+            });
+        });
+    }
+
+    startImageTransition();
+
+
+</script>
+</html>
